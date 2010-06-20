@@ -8,6 +8,23 @@
 
 @import <Foundation/CPObject.j>
 
+@import "GenericDevice.j"
+@import "Memory.j"
+//@import "CPU.j"
+@import "MemoryMappedDevice.j"
+@import "Storage.j"
+
+@import "ROM.j"
+@import "PIT.j"
+@import "PIC.j"
+@import "i8086.j"
+@import "i8087.j"
+
+@import "VGA.j"
+
+@import "IBMPC.j"
+
+@import "JSEmu.j"
 
 @implementation AppController : CPObject
 {
@@ -17,7 +34,7 @@
 {
     var theWindow = [[CPWindow alloc] initWithContentRect:CGRectMakeZero() styleMask:CPBorderlessBridgeWindowMask],
         contentView = [theWindow contentView];
-
+/*
     var label = [[CPTextField alloc] initWithFrame:CGRectMakeZero()];
 
     [label setStringValue:@"Hello World!"];
@@ -31,6 +48,10 @@
     [contentView addSubview:label];
 
     [theWindow orderFront:self];
+    */
+    var emu = [[JSEmu alloc] init];
+    [emu runTestFromBinary:"Tests/testinit.bin"];
+    
 
     // Uncomment the following line to turn on the standard menu bar.
     //[CPMenu setMenuBarVisible:YES];

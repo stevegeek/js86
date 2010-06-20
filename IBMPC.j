@@ -6,15 +6,16 @@
  Memory Map: http://www.elecnet.chandra.ac.th/learn/tipntrick/xt/default.htm
 */
 
-var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
-    IBMPC_ROMSize = 65535;          // 0xFFFF
-    
+    IBMPCROMStartAddress = 983040, // 0xF0000 (F000:0)
+    IBMPCROMSize = 65535,          // 0xFFFF
+    IBMPCRAMSize = 1048576; // 2^20
+ 
 @implementation PC : CPObject
 {
     BOOL on;
     
-    CPU cpu;
-    RAM ram;
+    CPU cpu         @accessors(readonly); // for debugging
+    Memory mem;
     ROM rom;
     
     CPArray devices;
@@ -24,6 +25,9 @@ var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
 {
     if(self = [super init])
     {
+        mem = [[Memory alloc] initWithRange:CPMakeRange(0,IBMPCRAMSize)];
+        cpu = [[i8086 alloc] initWithMemory:mem];
+        rom = [[ROM alloc] init];
         devices = {};
         regs = [];
     }
@@ -35,9 +39,29 @@ var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
     [rom setContents:data];
 }
 
+- (void)setRAMContentsWithString:string address:address
+{
+    [mem writeBytesFromString:string range:CPMakeRange(address,string.length)];
+}
+
+- (void)setRAMContentsWithArray:array address:address
+{
+    [mem writeBytes:array range:CPMakeRange(address,[array count])];
+}
+
 - (void)run
 {
-    
+    CPLog('run')
+    [CPTimer scheduledTimerWithTimeInterval:0.001 callback:function()
+    {
+        var cyclesPerRun = 5,
+            cycles = 0;
+        while ([self performCycle] && cyclesPerRun < 10)
+        {
+            cycles++;
+            CPLog(cycles)
+        }
+    } repeats:YES];
 }
 
 - (void)runForCycles:cycles
@@ -55,20 +79,21 @@ var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
     
 }
 
-- (void)performCycle
+- (BOOL)performCycle
 {
     if (!on)
-        return;
-        
+        return;        
     //[cpu fetch];
     //[cpu execute];
     [cpu fetchAndExecute];
-    //[ram performCycle];
+    //[mem performCycle];
     //[rom performCycle];
     var i = 0,
         count = devices.length;
     for (;i < count; i++)
         [devices[i] performCycle];
+        
+    return ![cpu halted];
 }
 
 - (void)reset
@@ -76,7 +101,7 @@ var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
     var i = 0,
         count = devices.length;
     [cpu reset];
-    [ram reset];
+    [mem reset];
     [rom reset];
     for (;i < count; i++)
         [devices[i] reset];
@@ -84,33 +109,38 @@ var IBMPC_ROMStartAddress = 983040, // 0xF0000 (F000:0)
 
 - (void)powerUp
 {
+    CPLog('IBMPC: Power Up');
     on = YES;
     // send powerDown to everything
     var i = 0,
         count = devices.length;
     [cpu powerUp];
-    [ram powerUp];
+    [mem powerUp];
     [rom powerUp];
     for (;i < count; i++)
         [devices[i] powerUp];
 }
 
-- (void)powerUpAndStartRunning:running
+- (void)powerUpAndStartRunning:running callbackOnHalt:callback
 {
+    [cpu setHaltCallback:callback]
     [self powerUp];
     
     if (running)
+    {
         [self run];
+    }
 }
 
 - (void)powerDown
 {
+    CPLog('IBMPC: Power Down');
     on = NO;
     // send powerDown to everything
     var i = 0,
         count = devices.length;
     [cpu powerDown];
-    [ram powerDown];
+    [mem powerDown];
     [rom powerDown];
     for (;i < count; i++)
         [devices[i] powerDown];

@@ -18,6 +18,13 @@
 {
 }
 
+-(void)powerUp
+{
+    [self reset];
+}
+
 - (void)performCycle
-{}
+{
+    
+}
 @end

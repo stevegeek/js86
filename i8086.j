@@ -19,7 +19,9 @@ INTERRUPT POINTER (type 1)
 INTERRUPT POINTER (type 0)
 0x00000
 */
-var i8086ResetVectorAddress = 1048560, //0xFFFF0 (FFFF:0)
+    i8086ResetVectorLinearAddress = 1048560, //0xFFFF0 (FFFF:0)
+    i8086ResetVectorCS = 65535, //0xFFFF
+    i8086ResetVectorIP = 0, //0x0
     i8086RegisterAX = 0,
     i8086RegisterCX = 1,
     i8086RegisterDX = 2,
@@ -42,28 +44,20 @@ function i8086ModRMMake(/*byte*/ modrm)
     return {mod: (modrm & i8086ModRMModMask) >> 6, reg2: (modrm & i8086ModRMReg2Mask) >> 3, reg1: (modrm & i8086ModRMReg1Mask)};
 }
 
-@implementation i8086 : CPU
+@implementation i8086 : GenericDevice //CPU
 {
-    /*short ax;
-    short bx;
-    short cx;
-    short dx;
-
-    short si;
-    short di;
-
-    short sp;
-    short bp;
-
-    short cs;
-    short ds;
-    short ss;
-    short es;
-    */
     CPArray regs;
-    short flag;
+    short flags;
     short ip;
-
+    
+    BOOL halted     @accessors;
+    
+    Memory mem;
+    
+    // Callbacks
+    id haltCallback @accessors;
+    
+    int cycleCount; // Used to compute emulated cycles Per second say 
 }
 
 - (id)init
@@ -75,25 +69,57 @@ function i8086ModRMMake(/*byte*/ modrm)
     return self;
 }
 
-- (void)fetchAndExecute 
+- (id)initWithMemory:(RAM)theRAM
 {
-    [self execute_decodeAndExecute:[self execute_fetch]];
-}
-
-- (word)fetch
-{
-    var b = [mem readByteAt:ip];
-    ip++;
-    return b;
+    if(self = [self init])
+    {
+        mem = theRAM;
+    }
+    return self;
 }
 
 - (void)reset
 {
     [super reset];
     
+    flags = 0;
     regs = [0,0,0,0,0,0,0,0,0,0,0,0];
-    ip = 0;
-    regs[i8086RegisterCS] = 65536;
+    ip = i8086ResetVectorIP;
+    regs[i8086RegisterCS] = i8086ResetVectorCS;
+
+    halted = false;
+    cycleCount = 0;
+}
+
+- (void)fetchAndExecute 
+{
+    [self decodeAndExecute:[self fetchByte]];
+}
+
+- (byte)fetchByte
+{
+    CPLog('i8086: fetch')  
+    var b = [mem readByteAt:((regs[i8086RegisterCS] << 4)+ip)];
+    ip++;
+    if (ip > 65535)
+    {
+        // set overflow flag?
+        ip = 0;
+    }
+    return b;
+}
+
+- (byte)fetchWord
+{
+    CPLog('i8086: fetch word')  
+    var w = [mem readWordAt:((regs[i8086RegisterCS] << 4)+ip)];
+    ip+=2;
+    if (ip > 65535)
+    {
+        // set overflow flag?
+        ip = 0;
+    }
+    return w;
 }
 
 /*  See: http://www.mlsite.net/8086/   (an Excellent reference for this processor)
@@ -112,7 +138,7 @@ function i8086ModRMMake(/*byte*/ modrm)
     /* OPCODENAME dest, src
     bytes - cycles
     flagsaffected */
-    
+    CPLog('i8086: decode ' + instruction);
     // Decode
     switch(instruction)
     {
@@ -548,12 +574,93 @@ function i8086ModRMMake(/*byte*/ modrm)
     }
 }
 
+// *** Arithmetic
 - (void)execute_addEbGb
 {
     /* ADD r/m8,r8
     2+ - 3/24+
     O---SZAPC */
-    var modrm = i8086ModRMMake([self fetch]);
+    var modrm = i8086ModRMMake([self fetchByte]);
+}
+
+- (void)execute_addALIb
+{
+    var imm = [self fetchByte],
+        ax = regs[i8086RegisterAX],
+        res = (ax & 255) + imm;
+    
+    if (res > 255)
+    {
+        // FIXME: SET OVERFLOW + SET CORRECT RES
+        CPLog('addALIb FIX OVERFLOW')
+    }
+    
+    regs[i8086RegisterAX] = (ax & 240) + res;
+    
+    [self addCycles:4];    
+}
+
+// *** Moves
+- (void)execute_movALIb
+{
+    var imm = [self fetchByte],
+        ax = regs[i8086RegisterAX];
+    
+    regs[i8086RegisterAX] = (ax & 240) + imm;
+    
+    [self addCycles:4];
+}
+
+// *** Jumps
+- (void)execute_jmpAp
+{
+    /* JMP seg:a16
+    5  15
+    ---------*/
+    var seg = [self fetchWord],
+        off = [self fetchWord];
+        
+    CPLog('i8086: jmpAp ' + seg + ':' + off);
+    regs[i8086RegisterCS] = seg;
+    ip = off;
+    
+    [self addCycles:15]
+}
+
+// *** MISC
+- (void)execute_hlt
+{
+    halted = true;
+    if (haltCallback)
+        haltCallback();
+    [self addCycles:1];
+}
+
+- (void)addCycles:cyc
+{
+    cycleCount += cyc;
+}
+
+// Debugging
+
+- (void)dumpRegistersToLog
+{
+    var string = "i8086 REGISTER DUMP: ";
+    string += "IP : " + ip;
+    string += " AX : " + regs[i8086RegisterAX];
+    string += " BX : " + regs[i8086RegisterBX];
+    string += " CX : " + regs[i8086RegisterCX];
+    string += " DX : " + regs[i8086RegisterDX];
+    string += " SP : " + regs[i8086RegisterSP];
+    string += " BP : " + regs[i8086RegisterBP];
+    string += " SI : " + regs[i8086RegisterSI];
+    string += " DI : " + regs[i8086RegisterDI];
+    string += " CS : " + regs[i8086RegisterCS];
+    string += " DS : " + regs[i8086RegisterDS];
+    string += " SS : " + regs[i8086RegisterSS];
+    string += " ES : " + regs[i8086RegisterES];
+    string += " Flags : " + flags;
+    CPLog(string);
 }
 
 @end

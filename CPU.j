@@ -4,9 +4,20 @@
     int cycleCount; // Used to compute emulated cycles Per second say
 }
 
+- (id)init
+{
+    CPLog('init from CPU')    
+    if(self = [super init])
+    {
+    }
+    return self;
+}
+
+
 - (id)initWithMemory:(RAM)theRAM
 {
-    if(self = [super init])
+    CPLog('initWithMem from CPU')
+    if(self = [self init])
     {
         mem = theRAM;
     }
