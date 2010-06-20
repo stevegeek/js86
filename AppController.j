@@ -25,6 +25,25 @@
 @import "IBMPC.j"
 
 @import "JSEmu.j"
+/*
+//_JSEmuLogString = "";
+_JSEmuConsole = nil;
+
+function formatMessage(aString, aLevel, aTitle)
+{
+    var now = new Date();
+    aLevel = ( aLevel == null ? '' : ' [' + aLevel + ']' );    
+    return now + " " + aTitle + aLevel + ": " + aString;
+}
+
+JSEmuLog = function(aString, aLevel, aTitle)
+{
+    var message = formatMessage(aString, aLevel, aTitle);
+    //_JSEmuLogString += (message + "\n");
+    //[_JSEmuConsole setStringValue:[_JSEmuConsole stringValue]+message+"\n"];
+    //[_JSEmuConsole sizeToFit];
+    [[CPRunLoop currentRunLoop] limitDateForMode:CPDefaultRunLoopMode];
+}*/
 
 @implementation AppController : CPObject
 {
@@ -32,26 +51,30 @@
 
 - (void)applicationDidFinishLaunching:(CPNotification)aNotification
 {
+    CPLogUnregister(CPLogConsole);
+    CPLogRegister(CPLogPopup);
+    //CPLogRegister(JSEmuLog);
+    
     var theWindow = [[CPWindow alloc] initWithContentRect:CGRectMakeZero() styleMask:CPBorderlessBridgeWindowMask],
         contentView = [theWindow contentView];
-/*
-    var label = [[CPTextField alloc] initWithFrame:CGRectMakeZero()];
 
-    [label setStringValue:@"Hello World!"];
-    [label setFont:[CPFont boldSystemFontOfSize:24.0]];
+    _JSEmuConsole = [[CPTextField alloc] initWithFrame:CGRectMakeZero()];
 
-    [label sizeToFit];
 
-    [label setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin];
-    [label setCenter:[contentView center]];
+    [_JSEmuConsole setStringValue:"Running...\n"];
+    [_JSEmuConsole setFont:[CPFont systemFontOfSize:10.0]]; 
+    [_JSEmuConsole sizeToFit];
 
-    [contentView addSubview:label];
+    [_JSEmuConsole setAutoresizingMask:CPViewMinXMargin | CPViewMaxXMargin | CPViewMinYMargin | CPViewMaxYMargin];
+    [_JSEmuConsole setFrameOrigin:CPMakePoint(20,20)];
+
+    [contentView addSubview:_JSEmuConsole];
 
     [theWindow orderFront:self];
-    */
+
     var emu = [[JSEmu alloc] init];
-    [emu runTestFromBinary:"Tests/testinit.bin"];
     
+    [emu runTestFromBinary:"Tests/testinit.bin"];
 
     // Uncomment the following line to turn on the standard menu bar.
     //[CPMenu setMenuBarVisible:YES];

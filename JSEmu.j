@@ -14,12 +14,7 @@
 
 - (void)computerDidHalt
 {
-    // HOW TO SHORTCUT ACCESS TO LOW BYTES?
-    if ((computer.cpu.regs[i8086RegisterAX] & 255) == 2)
-        CPLog('AL = 2 ? : YES');
-    else
-        CPLog('AL = 2 ? : NO');
-    
+    CPLog.warn("JSEMU: Computer Halted ... Core Dump :")
     [[computer cpu] dumpRegistersToLog];
     
     [computer powerDown];
@@ -100,7 +95,14 @@
     
     [self startEmulationAndCallOnHalt:function()
     {
-        CPLog('Halted! In Halt Callback')
+        
+        // ********************************** NEED A WAY TO DO TESTS AFTER RUN
+        // HOW TO SHORTCUT ACCESS TO LOW BYTES?
+        if ((computer.cpu.regs[i8086RegisterAX] & 255) == 2)
+            CPLog('AL = 2 ? : YES');
+        else
+            CPLog('AL = 2 ? : NO');
+
         [self computerDidHalt];
     }];
 }

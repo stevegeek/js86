@@ -57,7 +57,7 @@ function i8086ModRMMake(/*byte*/ modrm)
     // Callbacks
     id haltCallback @accessors;
     
-    int cycleCount; // Used to compute emulated cycles Per second say 
+    int cycleCount   @accessors(readonly); // Used to compute emulated cycles Per second say 
 }
 
 - (id)init
@@ -588,6 +588,8 @@ function i8086ModRMMake(/*byte*/ modrm)
     var imm = [self fetchByte],
         ax = regs[i8086RegisterAX],
         res = (ax & 255) + imm;
+        
+    CPLog('i8086: INST: addALIb ' + imm);
     
     if (res > 255)
     {
@@ -605,6 +607,8 @@ function i8086ModRMMake(/*byte*/ modrm)
 {
     var imm = [self fetchByte],
         ax = regs[i8086RegisterAX];
+ 
+    CPLog('i8086: INST: movALIb ' + imm);
     
     regs[i8086RegisterAX] = (ax & 240) + imm;
     
@@ -620,7 +624,7 @@ function i8086ModRMMake(/*byte*/ modrm)
     var seg = [self fetchWord],
         off = [self fetchWord];
         
-    CPLog('i8086: jmpAp ' + seg + ':' + off);
+    CPLog('i8086: INST: jmpAp ' + seg + ':' + off);
     regs[i8086RegisterCS] = seg;
     ip = off;
     

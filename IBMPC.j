@@ -6,10 +6,12 @@
  Memory Map: http://www.elecnet.chandra.ac.th/learn/tipntrick/xt/default.htm
 */
 
-    IBMPCROMStartAddress = 983040, // 0xF0000 (F000:0)
-    IBMPCROMSize = 65535,          // 0xFFFF
-    IBMPCRAMSize = 1048576; // 2^20
+IBMPCROMStartAddress = 983040, // 0xF0000 (F000:0)
+IBMPCROMSize = 65535,          // 0xFFFF
+IBMPCRAMSize = 1048576; // 2^20
  
+IBMPCCPUFrequency = 4772700; // Hz
+
 @implementation PC : CPObject
 {
     BOOL on;
@@ -52,11 +54,11 @@
 - (void)run
 {
     CPLog('run')
-    [CPTimer scheduledTimerWithTimeInterval:0.001 callback:function()
+    [CPTimer scheduledTimerWithTimeInterval:0.2 callback:function()
     {
         var cyclesPerRun = 5,
             cycles = 0;
-        while ([self performCycle] && cyclesPerRun < 10)
+        while ([self performCycle] && cycles < cyclesPerRun)
         {
             cycles++;
             CPLog(cycles)
@@ -134,7 +136,7 @@
 
 - (void)powerDown
 {
-    CPLog('IBMPC: Power Down');
+    CPLog('IBMPC: Power Down. Approx cycles if simulated: ' + [cpu cycleCount] + ' (sim time: ' + ([cpu cycleCount]/IBMPCCPUFrequency) + 's)');
     on = NO;
     // send powerDown to everything
     var i = 0,

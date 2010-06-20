@@ -1,11 +1,8 @@
 ; testinit.asm
-; Stephen Paul Ierodiaconou
+; Stephen Paul Ierodiaconou - 2010
 
-; For NASM  -- nasm Tests/testinit.asm -f bin -o Tests/testinit.bin
-
-; http://wiki.osdev.org/Babystep1
-; nasm boot.asm -f bin -o boot.bin
-; dd if=boot.bin of=/dev/fd0
+; For NASM  -- 
+;           nasm Tests/testinit.asm -f bin -o Tests/testinit.bin
 
 
 [ORG 0x0]
@@ -13,6 +10,63 @@
 start:
     mov al,0x1
     add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    mov al,0x1
+    add al,0x1
+    
     hlt
     
     
