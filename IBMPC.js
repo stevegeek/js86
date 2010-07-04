@@ -11,7 +11,7 @@ importScripts(  'SimpleJavascriptInheritance.js', 'JSEmu.js',
  Memory Map: http://www.elecnet.chandra.ac.th/learn/tipntrick/xt/default.htm
 */
 
-JSEmu.IBMPCXT = JSEmu.Devices.Generic.extend(
+JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
 {
     // Webworker message processor
     processWorkerMessage: function(message)
@@ -55,7 +55,7 @@ JSEmu.IBMPCXT = JSEmu.Devices.Generic.extend(
         }
         catch (e)
         {
-            JSEmu.logToConnectedScriptWithID(message.fromScriptID, 'IBMPCXT unhandled Exception. Error name: ' + e.name + '. Error message: ' + e.message, 'fatal');
+            JSEmu.logToConnectedScriptWithID(message.fromScriptID, 'IBMPC unhandled Exception. Error name: ' + e.name + '. Error message: ' + e.message, 'fatal');
         }
     },
     
@@ -206,7 +206,7 @@ onconnect = function (event)
     JSEmu.connectedScriptID++;
     
     if (!PC)
-        PC = new JSEmu.IBMPCXT();
+        PC = new JSEmu.IBMPC();
     
     port.onmessage = function (event)
     {
