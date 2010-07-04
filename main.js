@@ -1,3 +1,22 @@
+// http://www.ibm5150.net/repair_center.html
+
+
+var emulator = new JSEmu.Emulator( function () 
+{
+    // when ready
+    
+    //var icd = new JSEmu.Debugger();
+
+    emulator.loadBinaryFileAndRun('Tests/testinit.bin', function () {
+        console.log('now running...');
+    });
+});
+/*
+icd.pollForStatePeriodically(1, function () {
+    console.log('debugger pong...');
+})*/
+
+/*
 @implementation JSEmu : CPObject
 {
     PC computer;
@@ -78,17 +97,7 @@
 {
     CPLog('JSEMU: test start from binary file');
     // write a jmp in to 0:0 and some data at 0:0 to exec
-    /*var testramstartjmp = [234, 0, 0, 0, 0]; // far jmp 0:0  -> (Jmp Ap) Ap = 32 bit segment:offset -> EAh 00h 00h : 00h 00h
-    var testram = [176, 1, 4, 1, 244]; // mov al,1 ; add al, 1 ; hlt -> B0h 01h ; 04h 01h ; F4h
     
-    [computer setRAMContentsWithArray:testramstartjmp address:i8086ResetVectorLinearAddress];
-    [computer setRAMContentsWithArray:testram address:0];
-    
-    [self startEmulationAndCallOnHalt:function()
-    {
-        CPLog('Halted! In Halt Callback')
-        [self computerDidHalt];
-    }];*/
     
     var data = [self loadBinaryFromURL:testURL];
     [computer setRAMContentsWithString:data address:0];
@@ -108,3 +117,15 @@
 }
 
 @end
+*/
+/*var testramstartjmp = [234, 0, 0, 0, 0]; // far jmp 0:0  -> (Jmp Ap) Ap = 32 bit segment:offset -> EAh 00h 00h : 00h 00h
+var testram = [176, 1, 4, 1, 244]; // mov al,1 ; add al, 1 ; hlt -> B0h 01h ; 04h 01h ; F4h
+
+[computer setRAMContentsWithArray:testramstartjmp address:i8086ResetVectorLinearAddress];
+[computer setRAMContentsWithArray:testram address:0];
+
+[self startEmulationAndCallOnHalt:function()
+{
+    CPLog('Halted! In Halt Callback')
+    [self computerDidHalt];
+}];*/
