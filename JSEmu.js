@@ -19,6 +19,26 @@ function bind(scope, fn) {
 JSEmu = {};
 JSEmu.Devices = {};
 
+JSEmu.logToHTMLLog = function(extrainfo, roottype, text)
+{
+    var level = "Info";
+    switch (extrainfo)
+    {
+        case 'info':
+            level = "Info";
+            break;
+        case 'warn':
+            level = "Warning";
+            break;
+        case 'error':
+            level = "Error";
+            break;
+        case 'fatal':
+            level = "FATAL";
+            break;
+    }
+    $('#jsemu-log').append($('<p><b>'+roottype+'</b> : <em>'+level+'</em> : ' + text + '</p>'));
+}
 
 // These globals are right???
 JSEmu.connectedScriptID = 0;
@@ -30,21 +50,21 @@ JSEmu.messageWatchers = function (type, message)
 {
     for (var i = 0; i < JSEmu.connectedScripts.length; i++)
         JSEmu.connectedScripts[i].postMessage({
-            type:type, 
+            type:type,
             body:message});
 }
 /*
 JSEmu.messageWatcher = function (port, type, message)
 {
     port.postMessage({
-        type:type, 
+        type:type,
         body:message});
 }*/
 
 JSEmu.messageWatcherWithID = function (id, type, message)
 {
     JSEmu.connectedScripts[id].postMessage({
-        type:type, 
+        type:type,
         body:message});
 }
 
@@ -52,7 +72,7 @@ JSEmu.respondToWatcherWithID = function (id, messageid, type, message)
 {
     JSEmu.connectedScripts[id].postMessage({
         id: messageid,
-        type:type, 
+        type:type,
         body:message});
 }
 JSEmu.logToConnectedScriptWithID = function (id, message, level)
@@ -87,7 +107,7 @@ JSEmu.IBMPC = {
     RAMSize: 1048576,           // 2^20
 
     CPUFrequency: 4772700,      // Hz
-    
+
 
 };
 
@@ -107,9 +127,9 @@ JSEmu.i8086 = {
         CS: 8,
         DS: 9,
         SS: 10,
-        ES: 11,        
+        ES: 11,
     },
-    
+
     Flags: {
         CF: 1, // Carry
         PF: 4, // Parity
@@ -138,10 +158,10 @@ JSEmu.Devices.Generic = Class.extend(
 {
     init: function(){},
     reset: function() {},
-    powerUp: function() 
+    powerUp: function()
     {
         this.reset();
     },
     powerDown: function() {},
-    performCycle: function() {}    
+    performCycle: function() {}
 });

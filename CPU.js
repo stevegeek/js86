@@ -61,7 +61,6 @@ JSEmu.Devices.i8086 = JSEmu.Devices.Generic.extend(
         // service interrupts
         //if ((this.interruptIsReady && this.nmi)
         this.serviceHardwareInterrupts();
-        
         this.serviceSoftwareInterrupts();
     },
     

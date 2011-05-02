@@ -1,16 +1,22 @@
 // http://www.ibm5150.net/repair_center.html
 
-
-var emulator = new JSEmu.Emulator( function () 
+$(function()
 {
-    // when ready
-    
-    //var icd = new JSEmu.Debugger();
+    var emulator = new JSEmu.Emulator( function () 
+    {
+        // when ready
+        //var icd = new JSEmu.Debugger();
 
-    emulator.loadBinaryFileAndRun('Tests/testinit.bin', function () {
-        console.log('now running...');
+        emulator.loadBinaryFileAndRun('Tests/testinit.bin', function () {
+            console.log('now running...');
+        });
     });
 });
+
+
+
+
+
 /*
 icd.pollForStatePeriodically(1, function () {
     console.log('debugger pong...');

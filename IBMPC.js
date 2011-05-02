@@ -1,5 +1,5 @@
 
-importScripts(  'SimpleJavascriptInheritance.js', 'JSEmu.js', 
+importScripts(  'SimpleJavascriptInheritance.js', 'JSEmu.js',
                 'Memory.js', 'CPU.js', 'ROM.js',
                 'PIC.js', 'PIT.js');
 
@@ -7,11 +7,11 @@ importScripts(  'SimpleJavascriptInheritance.js', 'JSEmu.js',
  however in later machines the ROM exists at the end of the addressable space and then the BIOS
  is loaded into this location in memory. The CPU starts using the address located at the very end
  of the addressable space.
- 
+
  Memory Map: http://www.elecnet.chandra.ac.th/learn/tipntrick/xt/default.htm
 */
 
-JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
+JSEmu.Devices.IBMPC = JSEmu.Devices.Generic.extend(
 {
     // Webworker message processor
     processWorkerMessage: function(message)
@@ -21,7 +21,7 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
         // pass binary file name to load for ram/rom
         try
         {
-            //JSEmu.logToConnectedScriptWithID(message.fromScriptID, 'HELLO');
+            JSEmu.logToConnectedScriptWithID(message.fromScriptID, 'IBMPC : processWorkerMessage start');
             switch(message.type)
             {
                 case "powerUp":
@@ -29,10 +29,13 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
                 case "powerUpAndRun":
                     JSEmu.respondToWatcherWithID(message.fromScriptID, message.id, 'sys:ack', 'powerUpAndRun');
                     this.powerUp();
-                    if (!this.run())
+                    if (!this.runForOneTimePeriod())
                     {
-                        JSEmu.messageWatcherWithID(message.fromScriptID, 'sys:hlt', 'The system halted.');
+                        JSEmu.messageWatcherWithID(message.fromScriptID, 'sys:hlt', 'The system failed to start running. It may be halted.');
                     }
+                    break;
+                case "testmsg":
+                    JSEmu.respondToWatcherWithID(message.fromScriptID, message.id, 'sys:ack', 'testmsg');
                     break;
                 case "powerDown":
                     break;
@@ -58,7 +61,7 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
             JSEmu.logToConnectedScriptWithID(message.fromScriptID, 'IBMPC unhandled Exception. Error name: ' + e.name + '. Error message: ' + e.message, 'fatal');
         }
     },
-    
+
     init: function ()
     {
         this.on = false;
@@ -67,17 +70,17 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
         // memory, rom and cpu all live in this worker
         this.mem = new JSEmu.Devices.Memory(new JSEmu.MemoryRange(JSEmu.IBMPC.RAMSize, 0));
         this.rom = new JSEmu.Devices.ROM();
-    
+
         this.cpu = new JSEmu.Devices.i8086(this.mem);
-        
-        this.pic_master = new JSEmu.Devices.i8259Master(this.cpu);
-        this.pic_slave = new JSEmu.Devices.i8259Slave(this.cpu);
-        
-        this.vgaWorker = {};//new Worker('VGA.js');        
-    
+
+        //this.pic_master = new JSEmu.Devices.i8259Master(this.cpu);
+        //this.pic_slave = new JSEmu.Devices.i8259Slave(this.cpu);
+
+        this.vgaWorker = {};//new Worker('VGA.js');
+
         this.singleStep = false;
     },
-    
+
     loadBinaryFromURL: function(url)
     {
         //JSEmu.logToConnectedScripts('Loading binary file : ' + url);
@@ -90,11 +93,11 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
         req.send(null);
         return req.responseText;
     },
-    
+
     setRAMContentsWithString: function(data)
-    {        
+    {
         //JSEmu.logToConnectedScripts('data.count '+ data.count + ' ' + (('count' in data) ? (data.count) : (data.string.length)));
-        this.mem.writeBytesFromString(data.string, new JSEmu.MemoryRange( 
+        this.mem.writeBytesFromString(data.string, new JSEmu.MemoryRange(
                                 (('count' in data) ? (data.count) : (data.string.length)),
                                 (('startAddress' in data) ? (data.startAddress) : 0)
                                 ));
@@ -102,31 +105,39 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
 
     setRAMContentsWithArray: function(data)
     {
-        this.mem.writeBytes(data.array, new JSEmu.MemoryRange( 
+        this.mem.writeBytes(data.array, new JSEmu.MemoryRange(
                                 (('count' in data) ? (data.count) : (data.array.length)),
                                 (('startAddress' in data) ? (data.startAddress) : 0)
                                 ));
     },
-    
+
     //this.setROMContents = function(data)
     //{
     //    rom.setContents(data);
     //}
-    
-    run: function()
+
+    runForOneTimePeriod: function()
     {
         //JSEmu.logToConnectedScripts('Run');
         var i = 0;
+
         while (this.performCycle() && !this.singleStep)
         {
             i++;
-            if ( i > 1000 )
+            if ( i > 2 )
             {
-                JSEmu.logToConnectedScripts('DEBUG*****: 1000 cycles complete, DIEING');
+                JSEmu.logToConnectedScripts('DEBUG: cycles complete');
+
+                // SERVICE DEVICES
+
+                // Set a timeout to start a new run
+                setTimeout(bind(this, function(){
+                    this.runForOneTimePeriod();
+                }), 0);
                 break;
             }
         }
-        
+
         if (this.cpu.isHalted())
             return false;
         else
@@ -136,10 +147,10 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
     performCycle: function()
     {
         if (!this.on)
-            return false;        
-        
+            return false;
+
         this.cpu.fetchAndExecute();
-        
+
         var i = 0,
             count = this.devices.length;
         for (; i < count; i++)
@@ -173,7 +184,7 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
         this.rom.powerUp();
         for (; i < count; i++)
             this.devices[i].powerUp();
-            
+
         return this._super();
     },
 
@@ -189,27 +200,27 @@ JSEmu.IBMPC = JSEmu.Devices.Generic.extend(
         this.rom.powerDown();
         for (; i < count; i++)
             this.devices[i].powerDown();
-        
+
         return this._super();
     }
 });
 
-PC = null;
-
 // Script has connected to us
-onconnect = function (event) 
+onconnect = function (event)
 {
     var port = event.ports[0];
-        
+
     JSEmu.connectedScripts.push(port);
-    JSEmu.messageWatcherWithID(JSEmu.connectedScriptID, 'sys:connid', ''+JSEmu.connectedScriptID);    
+    JSEmu.messageWatcherWithID(JSEmu.connectedScriptID, 'sys:connid', ''+JSEmu.connectedScriptID);
     JSEmu.connectedScriptID++;
-    
-    if (!PC)
-        PC = new JSEmu.IBMPC();
-    
+
+    //if (!PC)
+    //    PC = new JSEmu.Devices.IBMPC();
+
     port.onmessage = function (event)
     {
         PC.processWorkerMessage(event.data);
     }
 }
+
+PC = new JSEmu.Devices.IBMPC();
