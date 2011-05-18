@@ -1,20 +1,14 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-  "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html>
 <html>
-<head>
-  <title>Javascript IBM PC XT Emulator</title>
-  <link rel="stylesheet" type="text/css" href="main.css">
-  <script type="text/javascript" src="libs/jquery-1.5.2.min.js"></script>
-  <script type="text/javascript" src="SimpleJavascriptInheritance.js"></script>
-  <script type="text/javascript" src="JSEmu.js"></script>
-  <script type="text/javascript" src="Emulator.js"></script>
-  <script type="text/javascript" src="Debugger.js"></script>
-  <script type="text/javascript" src="main.js"></script>
-
-</head>
-<body>
-<div id="jsemu-log"></div>
-
-</body>
+    <head>
+        <title>Hello, World!</title>
+        <script src="IBMPC.js" type="text/javascript"></script>
+    </head>
+    <body>
+        <script type="text/javascript">
+            var cpu = new i8086(new RAM([144, 176, 1, 244, 1, 1]));
+            cpu.run(500);
+            console.log(cpu.registers)
+        </script>
+    </body>
 </html>
-
