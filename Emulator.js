@@ -49,8 +49,8 @@ $(function() {
                 // Start drawing from current line in cyclic buffer
                 var line = this.lines[(i+startLine >= count) ? i+startLine-count : i+startLine];
                 // If one current line, blink the cursor with an underline
-                if (i == this.curLine)
-                    line = line.substring(0, this.curChar-1) + (this.cursorState ? '<u>' : '') + line.charAt(this.curChar-1) + (this.cursorState ? '</u>' : '') + line.substring(this.curChar) 
+                if ((!this.isFull && i == this.curLine) || (this.isFull && i == count-1))
+                    line = line.substring(0, this.curChar-1) + (this.cursorState ? '<u>' : '') + line.charAt(this.curChar-1) + (this.cursorState ? '</u>' : '') + line.substring(this.curChar);
                 terminalText += line + '<br>';
             }
             this.domElement.html(terminalText);
@@ -107,7 +107,7 @@ $(function() {
     // For debugging purposes we create a simulated 80x25 'text mode'. This
     // however does not obviously emulate any of the VGA subsystem which will
     // hopefully replace to (and the screen will become a canvas element).
-    terminal.init().log('test')
+    terminal.init()
     window.setInterval(function() {
         var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         terminal.log(possible.charAt(Math.floor(Math.random() * possible.length)))
