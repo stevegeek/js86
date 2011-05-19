@@ -16,7 +16,6 @@ $(function() {
         // State
         startLine:      0,
         curLine:        0,
-        curChar:        0,
         needsUpdate:    false,
         isFull:         false,
         cursorState:    false,
@@ -49,8 +48,8 @@ $(function() {
                 // Start drawing from current line in cyclic buffer
                 var line = this.lines[(i+startLine >= count) ? i+startLine-count : i+startLine];
                 // If one current line, blink the cursor with an underline
-                if ((!this.isFull && i == this.curLine) || (this.isFull && i == count-1))
-                    line = line.substring(0, this.curChar-1) + (this.cursorState ? '<u>' : '') + line.charAt(this.curChar-1) + (this.cursorState ? '</u>' : '') + line.substring(this.curChar);
+                if (((!this.isFull && i == this.curLine) || (this.isFull && i == count-1)) && line.length < this.maxCharacters-1)
+                    line += (this.cursorState ? '<u>&nbsp;</u>' : '');
                 terminalText += line + '<br>';
             }
             this.$domElement.html(terminalText);
@@ -67,7 +66,6 @@ $(function() {
                 this.isFull = true;
                 this.curLine = 0;
             }
-            this.curChar = 0;
             this.lines[this.curLine] = '';
             return this;
         },
@@ -77,14 +75,13 @@ $(function() {
                 this.needsUpdate = true;
 
             // Split message into lines
-            while (msg.length + this.curChar > this.maxCharacters) {
-                var preLength = this.maxCharacters - this.curChar;
+            while (msg.length + this.lines[this.curLine].length > this.maxCharacters) {
+                var preLength = this.maxCharacters - this.lines[this.curLine].length;
                 this.lines[this.curLine] += msg.substring(0, preLength);
                 msg = msg.substring(preLength);
                 this.newLine();
             }
             this.lines[this.curLine] += msg;
-            this.curChar += msg.length;
 
             return this;
         },
@@ -107,13 +104,13 @@ $(function() {
     // For debugging purposes we create a simulated 80x25 'text mode'. This
     // however does not obviously emulate any of the VGA subsystem which will
     // hopefully replace to (and the screen will become a canvas element).
-    terminal.init()
+    terminal.init();
 
     // Create Main worker
     $.Hive.create({
         worker: 'IBMPC.js',
         receive: function(data) {
-            console.log(data)
+            console.log(data);
             terminal.log(data.message);
         },
         created: function($hive) {
