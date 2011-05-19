@@ -1,5 +1,5 @@
-Javascript IBM PC AT emulator. 
-------------------------------
+Javascript IBM PC Model 5150 emulator. 
+--------------------------------------
 
 This is a project I started some time ago but didn't have much time to work on recently. 
 
