@@ -1,0 +1,17 @@
+body
+{
+    background:url(SVGs/Computer.svg) no-repeat;
+}
+
+#terminal
+{
+    font-family:Courier;
+    font-size:0.5em;
+    font-weight:800;
+    line-height:1.6em;
+    letter-spacing:0.2em;
+    color:#ccc;
+    margin:130px 0 0 140px;
+    width:480px;
+    height:390px;
+}
