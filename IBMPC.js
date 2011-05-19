@@ -1,3 +1,5 @@
+importScripts('libs/jquery-hive/jquery.hive.pollen.js');
+
 //var jsPC = {};
 var Constants = {
     CPURunning: 1,
@@ -129,14 +131,14 @@ i8086.prototype.decode = function(instructionByte) {
             return function() {
                 this.cycleCount++; // where this is going to now be the cpu object as we bind this
                 //nop
-                console.log('NOP')
+                $.log('NOP')
             }
         case 176: // needs another fetch
             return  function() {
                 // Move the immediate byte literal into AL
                 // --- MOV AL, Ib
                 var imm = this.fetch();
-                console.log('i8086: INST: movALIb ' + imm);
+                $.log('i8086: INST: movALIb ' + imm);
                 this.registers.AX = (this.registers.AX & 0xFF00) + (imm & 0xFF); // FUNC THESE?
                 //this.addCycles(4);
                 return this;
@@ -147,10 +149,22 @@ i8086.prototype.decode = function(instructionByte) {
                 this.cycleCount++;
             }
         default:
-            console.log('UNKNOWN x86 INSTRUCTION:' + instructionByte)
+            $.log('UNKNOWN x86 INSTRUCTION:' + instructionByte)
             return function() {
                 throw "UnknownInstruction Exception";
             }
             
     }
 }
+
+var cpu = new i8086(new RAM([144, 176, 1, 244, 1, 1]));
+
+$(function(message) {
+    cpu.run(500);
+    $.log('ack');
+});
+
+$.log = function(msg) {
+    this.send(msg + '\n');
+}
+

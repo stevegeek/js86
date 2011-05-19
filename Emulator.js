@@ -24,7 +24,7 @@ $(function() {
         init: function(idName, interval, blinkInterval) {
             this.refreshInterval        = typeof interval == 'undefined' ? 20 : interval;
             this.blinkCursorInterval    = typeof blinkInterval == 'undefined' ? 500 : blinkInterval;
-            this.domElement             = $(typeof idName == 'undefined' ? this.terminalID : idName);
+            this.$domElement             = $(typeof idName == 'undefined' ? this.terminalID : idName);
 
             // For timer callbacks bind with this object
             var self = this;
@@ -53,7 +53,7 @@ $(function() {
                     line = line.substring(0, this.curChar-1) + (this.cursorState ? '<u>' : '') + line.charAt(this.curChar-1) + (this.cursorState ? '</u>' : '') + line.substring(this.curChar);
                 terminalText += line + '<br>';
             }
-            this.domElement.html(terminalText);
+            this.$domElement.html(terminalText);
         },
         // Change state of cursor
         blinkCursor: function() {
@@ -108,17 +108,19 @@ $(function() {
     // however does not obviously emulate any of the VGA subsystem which will
     // hopefully replace to (and the screen will become a canvas element).
     terminal.init()
-    window.setInterval(function() {
-        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        terminal.log(possible.charAt(Math.floor(Math.random() * possible.length)))
-    }, 1);
 
+    // Create Main worker
+    $.Hive.create({
+        worker: 'IBMPC.js',
+        receive: function(data) {
+            console.log(data)
+            terminal.log(data.message);
+        },
+        created: function($hive) {
+            $( $hive ).send('hi');
+        }
+    });
 });
-
-//var cpu = new i8086(new RAM([144, 176, 1, 244, 1, 1]));
-//cpu.run(500);
-//console.log(cpu.registers)
-
 
 /*JSEmu.Emulator = Class.extend(
 {
