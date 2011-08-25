@@ -188,33 +188,33 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
                 $.log('addALIb FIX OVERFLOW')
             }
             this.registers.AX = (this.registers.AX & 0xFF00) + (res & 0xFF);
-            $.log('i8086: INST: addALIb ' + imm);
             this.addCycles(4);
+            $.log('i8086: INST: addALIb ' + imm);
             break;
 
         case 0x90:
             // NOP: do nothing
             // 1 3
-            $.log('NOP');
             this.addCycles(3);
+            $.log('i8086: INST: NOP');
             break;
 
         case 0xB0:
             // MOV AL, Ib : Move the immediate byte literal into AL
             // 2+i(1,2) 4
             var imm = this.fetch();
-            $.log('i8086: INST: movALIb ' + imm);
             this.registers.AX = (this.registers.AX & 0xFF00) + (imm & 0xFF); // FUNC THESE?
             this.addCycles(4);
+            $.log('i8086: INST: movALIb ' + imm);
             break;
 
         case 0xE6:
             // OUT  Ib  AL : Output the value in AL to port specified by the immediate
             // 2 14
             var imm = this.fetch();
-            $.log('i8086: INST: outIbAL, imm ' + imm + ' AL ' + (this.registers.AX & 0xFF));
             this.portWriteByte(imm & 0xFF, this.registers.AX & 0xFF);
             this.addCycles(14);
+            $.log('i8086: INST: outIbAL, imm ' + imm + ' AL ' + (this.registers.AX & 0xFF));
             break;
 
         case 0xEA:
@@ -222,10 +222,17 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             // 5  15
             var segment = this.fetch() + (this.fetch() << 8),
                 offset = this.fetch() + (this.fetch() << 8);
-            $.log('i8086: INST: jmpAp ' + segment + ':' + offset);
             this.registers.CS = segment;
             this.registers.IP = offset;
             this.addCycles(15);
+            $.log('i8086: INST: jmpAp ' + segment + ':' + offset);
+            break;
+
+        case 0xFA:
+            // CLI : Clear interrupt flags
+            // 1 2
+            this.addCycles(2);
+            $.log('i8086: INST: CLI NOT IMPLEMENTED');
             break;
 
         case 0xF4:
@@ -233,6 +240,7 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             // 1 2
             this.state = Constants.CPUHalted;
             this.addCycles(2);
+            $.log('i8086: INST: HALT CPU');
             break;
 
         default:
@@ -241,9 +249,11 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
     }
 }
 i8086.prototype.addPortDevice = function(port, device) {
+    //$.log('ADD PORT : ' + port + ' ' + device)
     this.portDevices[port] = device;
 }
 i8086.prototype.portWriteByte = function(port, data) {
+    //$.log('WR PORT : ' + port + ' ' + data)
     this.ports8Bit[port] = data;
     this.portDevices[port].portWrite(port);
 }
@@ -258,18 +268,22 @@ i8086.prototype.portReadByte = function(port) {
 i8086.prototype.portReadWord = function(port) {
     return this.ports16Bit[port];
 }
+
 // 8259 Programmable Interrupt Controller
 // ************************************************************************
 function PIC_8259(cpu) {
     this.cpu = cpu;
     this.cpu.addPortDevice(Constants.Master8259CommandPort, this);
+    this.cpu.addPortDevice(Constants.Master8259DataPort, this);
+    this.cpu.addPortDevice(Constants.Slave8259CommandPort, this);
+    this.cpu.addPortDevice(Constants.Slave8259DataPort, this);
 }
 PIC_8259.prototype.portWrite = function(port) {
-    $.log('PIC saw port write')
+    $.log('PIC8259 : PORTS : saw port write ' + port)
 }
 PIC_8259.prototype.update = function() {
     // Get some processing time
-    $.log('PIC tick');
+    $.log('PIC8259 : UPDATE : tick');
 }
 
 // System
@@ -282,6 +296,9 @@ function System() {
     // Create PIC
     this.peripherals.pic = new PIC_8259(this.cpu);
 }
+System.prototype.isHalted = function() {
+    return this.cpu.state === Constants.CPUHalted;
+}
 System.prototype.setRAMContents = function(dataBuffer) {
     this.cpu.memory.writeBytes(new Uint8Array(dataBuffer));
 }
@@ -289,11 +306,12 @@ System.prototype.cycle = function(cycles) {
     this.cpu.run(typeof cycles !== 'undefined' ? cycles : 500);
     var devices = this.peripherals;
     $.each(devices, function(id) {
-        $.log('Device update for ' + id + ':')
+        $.log('SYS : Device update for ' + id + ':')
         devices[id].update();
     });
 }
 
+// ************************************************************************
 var ibmpc = new System();
 
 // Message handler
@@ -312,7 +330,8 @@ $(function(message) {
         case 'doSystemCycle':
         default:
             // Do a run loop
-            ibmpc.cycle(parseInt(message.data));
+            if (!ibmpc.isHalted())
+                ibmpc.cycle(parseInt(message.data));
             // Tell the app
             $.send({
                 name: 'ack',

@@ -24,6 +24,19 @@ start:
     add al,0x1
     add al,0x1
     out 0x20,al
+
+    ; The next instructions are from the 8259 initialisation code in BIOS.ASM V20 NEC BIOS
+    cli
+    mov al, 0x13
+    out 0x20,al
+    mov al,8
+    out 0x21,al
+    mov al,9
+    out 0x21,al
+    mov al,0xFF
+    out 0x21,al
+
+    ; more stuff
     add al,0x1
     add al,0x1
     add al,0x1
