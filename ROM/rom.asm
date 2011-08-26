@@ -33,6 +33,7 @@ start:
     out 0x21,al
     mov al,9
     out 0x21,al
+    ; check what next command does
     mov al,0xFF
     out 0x21,al
 

@@ -24,6 +24,7 @@
     * Instruction set details http://ref.x86asm.net/index.html
     * Good opcode reference: http://www.pastraiser.com/cpu/i8088/i8088_opcodes.html
     * For Memory map see 1-15 and 1-16 in ibm_techref_v202_1.pdf
+    * Interrupts : http://www.slideshare.net/guest0f0fd2c/interrupts-2826774
 
     MIT License : Copyright (C) 2010,2011 by Stephen Ierodiaconou
 */
@@ -88,9 +89,7 @@ var Constants = {
     CPUPorts: 65536,
     // 8259 PIC
     Master8259CommandPort:  0x0020,
-    Master8259DataPort:     0x0021,
-    Slave8259CommandPort:   0x00A0,
-    Slave8259DataPort:      0x00A1, 
+    Master8259DataPort:     0x0021
 }
 
 // Utilities
@@ -311,28 +310,102 @@ i8086.prototype.portReadWord = function(port) {
 // http://en.wikipedia.org/wiki/Intel_8259
 // ************************************************************************
 function PIC_8259(cpu) {
+    this.states = {
+        Uninitialised: 0,
+        WaitingForICW2: 1,
+        WaitingForICW3: 2,
+        WaitingForICW4: 3,
+        Ready: 4
+    }
+    this.state = this.states.Uninitialised;
     this.cpu = cpu;
+
     this.cpu.addPortDevice(Constants.Master8259CommandPort, this);
     this.cpu.addPortDevice(Constants.Master8259DataPort, this);
-    this.cpu.addPortDevice(Constants.Slave8259CommandPort, this);
-    this.cpu.addPortDevice(Constants.Slave8259DataPort, this);
 
     this.registers = {
         IMR: 0,
         ISR: 0,
-        IRR: new Array(8)
+        IRR: 0
     }
 }
 PIC_8259.prototype.interruptRequest = function(id) {
     // fire interrupt with id, 8 for the master , or 15 with master/slave
     //this.registers.IRR[id] = true;
 
+    // TODO: Do nothing if not initialised?
+
     // TODO: check priority/mask etc
+
     this.cpu.interruptRequest(id);
 }
 PIC_8259.prototype.portWrite = function(port) {
-    $.log('PIC8259 : PORTS : saw port write ' + port)
     // TODO: Here we could cause an update too, thus servicing an interripts at this point too.
+    var byte = this.cpu.portReadByte(port);
+    $.log('PIC8259 : PORTS : saw port write ' + port + ' val ' + byte)
+    // The low bit of the port number sets the A0 bit of the command words. This is cause in the
+    // hardware the CPU address bus bit A1 is connected to A0 on the 8259 and when the port address
+    // is written to the address bus it modifies this bit
+    // Process ICWs and OCWs
+    if (port == Constants.Master8259CommandPort) {  // A0 pin is 0
+        // If D4 is 1 then we have a Initialization Command Word 1 (ICW1)
+        if (byte & 16) {
+            switch (this.state) {
+                case this.states.Uninitialised: // ready for ICW1
+                    this.registers.IMR = 0;
+                    // initial conditions
+                    this.config = {
+                        //ICW1
+                        requireICW4: false,
+                        //callAddressInterval: 0, ignored in 8086 mode
+                        triggerMode: false,
+                        lowestPriority: 7,
+                        //ICW2
+                        addressVector: 0x0,
+                        //ICW4
+                        mode86: false,
+                        autoEndOfInterruptMode: false,
+                        bufferedMode: false,
+                        specialFullyNestedMode: false,
+                        singleMode: false // no Slave in XT so this will be 1
+                    }
+                    this.config.requireICW4 = byte & 1 ? true : false;
+                    this.config.singleMode = byte & 2 ? true : false;
+                    this.config.triggerMode = byte & 8 ? true : false;
+                    $.log('PIC8259 : ICW1 : icw4 ' + this.config.requireICW4 + ' sgl ' + this.config.singleMode + ' trgr ' + this.config.triggerMode);
+                    this.state = this.states.WaitingForICW2;
+                    break;
+                default:
+                    throw 'PIC8259 : ICW1 received in incorrect state';
+            }
+        }
+    } else { // A0 is 1
+        // Port is Constants.Master8259DataPort
+        switch (this.state) {
+            case this.states.WaitingForICW2: // Ready for ICW2
+                this.config.addressVector = byte & 0xF8; // top 5 bits of ICW2
+                $.log('PIC8259 : ICW2 : vec ' + this.config.addressVector);
+                // See 8259 Datasheet page 10, Figure 6 Initialization Sequence
+                if (this.config.singleMode && !this.config.requireICW4)
+                    this.state = this.states.Ready; // ready
+                else if (!this.config.singleMode)
+                    throw 'PIC8259 : no slave device support'; //this.state = this.states.WaitingForICW3; // wait for icw3 -- on when there is a slave
+                else if (this.config.singleMode && this.config.requireICW4)
+                    this.state = this.states.WaitingForICW4; // wait for icw4
+                else
+                    throw 'PIC8259 : Internal state invalid on receipt of ICW2.';
+                break;
+            case this.states.WaitingForICW4:
+                this.config.mode86 = byte & 1 ? true : false;
+                this.config.autoEndOfInterruptMode = byte & 2 ? true : false;
+                this.config.bufferedMode = byte & 8 ? true : false;
+                // TODO: if you add Slave support must add the parsing of the bit 3 which is master or slave buffered.
+                this.config.specialFullyNestedMode = byte & 16 ? true : false;
+                $.log('PIC8259 : ICW4 : 86mode ' + this.config.mode86 + ' autoEOI ' + this.config.autoEndOfInterruptMode + ' buffered ' + this.config.bufferedMode + ' fullyNested ' + this.config.specialFullyNestedMode);
+                this.state = this.states.Ready;
+                break;
+        }
+    }
 }
 PIC_8259.prototype.update = function() {
     // Get some processing time
