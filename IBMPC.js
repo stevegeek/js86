@@ -1,3 +1,33 @@
+/*
+    IBM Personal Computer XT Model 5160
+    --------------------------------
+    http://en.wikipedia.org/wiki/IBM_Personal_Computer_XT
+
+    Specifications:
+    ---------------
+    * CPU: Intel 8088 @ 4.77MHz
+    * RAM: 128KB to 640KB depending on version
+    * ROM: 40KB (up to 48KB)
+    * HDD: 20MB
+
+    Technical reference: (includes description, BIOS source listings, circuit diagrams: the works!)
+    http://www.retroarchive.org/dos/docs/ibm_techref_v202_1.pdf
+    http://www.retroarchive.org/dos/docs/ibm_techref_v202_2.pdf
+    http://www.retroarchive.org/dos/docs/ibm_techref_v202_3.pdf
+
+    Components emulated (or partially) so far:
+    * Intel 8088 8-BIT HMOS MICROPROCESSOR
+    * Intel 8259 PROGRAMMABLE INTERRUPT CONTROLLER
+
+    References:
+    -----------
+    * Instruction set details http://ref.x86asm.net/index.html
+    * Good opcode reference: http://www.pastraiser.com/cpu/i8088/i8088_opcodes.html
+    * For Memory map see 1-15 and 1-16 in ibm_techref_v202_1.pdf
+
+    MIT License : Copyright (C) 2010,2011 by Stephen Ierodiaconou
+*/
+
 importScripts('libs/jquery-hive/jquery.hive.pollen.js');
 
 // Create a log function on pollen
@@ -19,6 +49,7 @@ var Constants = {
     ResetVectorLinearAddress: 0xFFFF0,  // 1048560 (FFFF:0)
     ResetVectorCS: 0xFFFF,              // 65535
     ResetVectorIP: 0,                   // 0x0
+    // See Section B-2 of ibm_techref_v202_2.pdf (p156)
     Registers: {
         AX: 0,
         CX: 1,
@@ -33,7 +64,7 @@ var Constants = {
         SS: 10,
         ES: 11,
     },
-    Flags: {
+    Flags: { // 16 bit register
         CF: 1, // Carry
         PF: 4, // Parity
         AF: 16, // Auxilliary
@@ -44,7 +75,7 @@ var Constants = {
         DF: 1024, // Direction
         OF: 2048 // Overflow
     },
-    /* ModRM */
+    // ModRM
     ModRM: {
         ModMask: 196,
         Reg2Mask: 56,
@@ -171,6 +202,9 @@ i8086.prototype.performFetchDecodeExecuteCycle = function() {
 }
 i8086.prototype.decodeAndExecute = function(instructionByte) {
     switch (instructionByte) {
+
+        // http://www.pastraiser.com/cpu/i8088/i8088_opcodes.html
+
         /*case OPCODE:
             // ASM CODE : desc
             // bytes cycles
@@ -248,12 +282,16 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             throw "UnknownInstruction Exception";
     }
 }
+i8086.prototype.interruptRequest = function(interruptData) {
+    // data contains vector - top 5 bits are address of table, bottom 3 are interrupt id
+    $.log('i8086: INTERRUPT : ID ' + interruptData & 0x07);
+}
 i8086.prototype.addPortDevice = function(port, device) {
-    //$.log('ADD PORT : ' + port + ' ' + device)
+    //$.log('i8086: ADD PORT : ' + port + ' ' + device)
     this.portDevices[port] = device;
 }
 i8086.prototype.portWriteByte = function(port, data) {
-    //$.log('WR PORT : ' + port + ' ' + data)
+    //$.log('i8086: WR PORT : ' + port + ' ' + data)
     this.ports8Bit[port] = data;
     this.portDevices[port].portWrite(port);
 }
@@ -270,6 +308,7 @@ i8086.prototype.portReadWord = function(port) {
 }
 
 // 8259 Programmable Interrupt Controller
+// http://en.wikipedia.org/wiki/Intel_8259
 // ************************************************************************
 function PIC_8259(cpu) {
     this.cpu = cpu;
@@ -277,13 +316,33 @@ function PIC_8259(cpu) {
     this.cpu.addPortDevice(Constants.Master8259DataPort, this);
     this.cpu.addPortDevice(Constants.Slave8259CommandPort, this);
     this.cpu.addPortDevice(Constants.Slave8259DataPort, this);
+
+    this.registers = {
+        IMR: 0,
+        ISR: 0,
+        IRR: new Array(8)
+    }
+}
+PIC_8259.prototype.interruptRequest = function(id) {
+    // fire interrupt with id, 8 for the master , or 15 with master/slave
+    //this.registers.IRR[id] = true;
+
+    // TODO: check priority/mask etc
+    this.cpu.interruptRequest(id);
 }
 PIC_8259.prototype.portWrite = function(port) {
     $.log('PIC8259 : PORTS : saw port write ' + port)
+    // TODO: Here we could cause an update too, thus servicing an interripts at this point too.
 }
 PIC_8259.prototype.update = function() {
     // Get some processing time
     $.log('PIC8259 : UPDATE : tick');
+
+    // STUFF
+
+    // TEST :::: Interrupt needs servicing
+    var data = 1;
+    this.cpu.interruptRequest(data);
 }
 
 // System
