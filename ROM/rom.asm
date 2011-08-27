@@ -32,9 +32,13 @@ start:
     out 0x21,al
     mov al,9
     out 0x21,al
-    ; check what next command does
+    ; Next OCW1: set all masks
     mov al,0xFF
     out 0x21,al
+    ; read ISR
+    mov al,0x0B
+    out 0x20,al
+    in al,0x20
 
     ; more stuff
     add al,0x1

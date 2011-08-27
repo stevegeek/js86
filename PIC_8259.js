@@ -98,8 +98,28 @@ PIC_8259.prototype.portWrite = function(port) {
                             case 7: // Rotate on specific EOI command
                                 break;
                         }
+                        $.log('PIC8259 : OCW2 : ' + byte);
                     } else {
                         // OCW3
+                        switch (byte & 3) {
+                            case 0, 1:
+                                break;
+                            case 2: // Read IRR
+                                this.cpu.port
+                                break;
+                            case 3: // Read ISR
+                                break;
+                        }
+                        if (byte & 4)
+                            ; // poll command
+                        else
+                            ; // no poll command
+                        if (byte & 64)
+                            if (byte & 32)
+                                ; // Set special mask
+                            else
+                                ; // Reset special mask
+                        $.log('PIC8259 : OCW3 : ' + byte);
                     }
                     break;
                 default:
@@ -134,6 +154,7 @@ PIC_8259.prototype.portWrite = function(port) {
             case this.states.Ready:
                 // Accept as an OCW1 - the interrupt mask
                 this.registers.IMR = byte;
+                $.log('PIC8259 : OCW1 : set interrupt mask ' + byte);
                 break;
             default:
                 throw 'PIC8259 : Initialization Command Word or Operation Command Words received when not in valid state';
