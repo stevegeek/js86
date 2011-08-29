@@ -44,6 +44,13 @@ i8086.prototype.fetch = function() {
     this.registers.IP = this.registers.IP + 1 > 0xFFFF ? 0 : this.registers.IP + 1;
     return byte;
 }
+i8086.prototype.fetchWord = function() {
+    //this.cycleCount += 8; // Each bus operation requires 4 CLK cycles. (THESE ARE ADDED ALREADY BY COUNTS)
+    // Little-endian
+    var word = this.memory.bytes[ (this.registers.CS << 4) + this.registers.IP] + (this.memory.bytes[ (this.registers.CS << 4) + this.registers.IP + 1] << 8);
+    this.registers.IP = this.registers.IP + 2 > 0xFFFF ? 0 : this.registers.IP + 2;
+    return word;
+}
 i8086.prototype.performFetchDecodeExecuteCycle = function() {
     this.decodeAndExecute(this.fetch());
     return this;
@@ -104,8 +111,8 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
         case 0xEA:
             // JMP seg:a16
             // 5  15
-            var segment = this.fetch() + (this.fetch() << 8),
-                offset = this.fetch() + (this.fetch() << 8);
+            var offset = this.fetchWord(),
+                segment = this.fetchWord();
             $.log('i8086: INST: jmpAp ' + segment + ':' + offset);
             this.registers.CS = segment;
             this.registers.IP = offset;
