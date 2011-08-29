@@ -18,6 +18,11 @@
 
 
 [ORG 0x0]
+    db 255
+    db 0
+    db 0
+    db 0
+    times 252 db 0
 
 start:
     mov al,0x1
@@ -26,8 +31,10 @@ start:
 
     ; The next instructions are from the 8259 initialisation code in BIOS.ASM V20 NEC BIOS
     cli
+    ; ICW1
     mov al, 0x13
     out 0x20,al
+    ; ICW2 - vector 0
     mov al,8
     out 0x21,al
     mov al,9

@@ -131,6 +131,7 @@ function RAM(initialValues) {
     this.size = Constants.RAMSize;
     this.buffer = new ArrayBuffer(this.size);
     this.bytes = new Uint8Array(this.buffer);
+    this.words = new Uint16Array(this.buffer);
     if (initialValues)
         this.writeBytesWithRange(initialValues, MakeRange(0, initialValues.length))
 }

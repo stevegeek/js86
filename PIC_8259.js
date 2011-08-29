@@ -105,9 +105,12 @@ PIC_8259.prototype.portWrite = function(port) {
                             case 0, 1:
                                 break;
                             case 2: // Read IRR
-                                this.cpu.port
+                                this.cpu.portDeviceWriteByte(Constants.Master8259CommandPort, this.registers.IRR);
+                                $.log('PIC8259 : OCW3 : read IRR - ' +this.registers.IRR);
                                 break;
                             case 3: // Read ISR
+                                this.cpu.portDeviceWriteByte(Constants.Master8259CommandPort, this.registers.ISR);
+                                $.log('PIC8259 : OCW3 : read ISR - ' +this.registers.ISR);
                                 break;
                         }
                         if (byte & 4)
@@ -119,7 +122,6 @@ PIC_8259.prototype.portWrite = function(port) {
                                 ; // Set special mask
                             else
                                 ; // Reset special mask
-                        $.log('PIC8259 : OCW3 : ' + byte);
                     }
                     break;
                 default:

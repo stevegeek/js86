@@ -134,7 +134,12 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
 }
 i8086.prototype.interruptRequest = function(interruptData) {
     // data contains vector - top 5 bits are address of table, bottom 3 are interrupt id
-    $.log('i8086: INTERRUPT : ID ' + interruptData & 0x07);
+    var baseAddress = interruptData & 0xF8,
+        interrupt = interruptData & 0x07,
+        tableAddress = baseAddress + (interrupt*2),
+        IP = this.memory.words[tableAddress],
+        CS = this.memory.bytes[tableAddress + 1];
+    $.log('i8086: INTERRUPT : ID ' + interrupt + ' base vector table address ' + baseAddress + ' - IP ' + IP + ' CS ' + CS);
 }
 i8086.prototype.addPortDevice = function(port, device) {
     //$.log('i8086: ADD PORT : ' + port + ' ' + device)
@@ -148,7 +153,13 @@ i8086.prototype.portWriteByte = function(port, data) {
 i8086.prototype.portWriteWord = function(port, data) {
     // FIXME: check this makes sense , ie is port address linear?
     this.ports16Bit[port] = data;
-    this.portHandlers[port].call();
+    this.portDevices[port].portWrite(port);
+}
+i8086.prototype.portDeviceWriteByte = function(port, data) {
+    this.ports8Bit[port] = data;
+}
+i8086.prototype.portDeviceWriteWord = function(port, data) {
+    this.ports16Bit[port] = data;
 }
 i8086.prototype.portReadByte = function(port) {
     return this.ports8Bit[port];
