@@ -170,6 +170,6 @@ PIC_8259.prototype.update = function() {
     // STUFF
 
     // TEST :::: Interrupt needs servicing
-    var data = 1;
-    this.cpu.interruptRequest(data);
+    var data = 0;
+    this.cpu.hardwareInterruptRequest(data);
 }

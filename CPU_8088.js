@@ -1,5 +1,22 @@
-// i8086 processor
-// ************************************************************************
+/*  i8086 processor
+    ---------------
+
+    Intel 8088 processor emulation.
+
+    Interrupts:
+        - http://www.bime.ntu.edu.tw/~ttlin/Course15/lecture_notes/C15_LECTURE_NOTE_11(2%20in%201).pdf
+        - http://ftp.utcluj.ro/pub/users/nedevschi/PMP/WLab/x86per/week9.pdf
+
+    Interrupt Vector Table:
+    Vector 0 = Divide Error
+    Vector 1 = Single Step
+    Vector 2 = NMI
+    Vector 3 = Breakpoint
+    Vector 4 = Signed number overflow
+    Vector 5 - 31 = Reserved
+    Vector 32 - 255 = User Available
+*/
+
 function i8086(memory) {
     this.memory = memory;
     this.reset();
@@ -99,6 +116,23 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             this.addCycles(4);
             break;
 
+        case 0xCC:
+            // INT alias (INT 3) : Call to Interrupt Procedure, Breakpoint
+            // 1 72
+            $.log('i8086: INST: int3 - Breakpoint');
+            this.softwareInterruptRequest(3);
+            this.addCycles(72);
+            break;
+
+        case 0xCD:
+            // INT Ib : Call to Interrupt Procedure
+            // 2 71
+            var imm = this.fetch();
+            $.log('i8086: INST: int ' + imm);
+            this.softwareInterruptRequest(imm);
+            this.addCycles(71);
+            break;
+
         case 0xE6:
             // OUT  Ib  AL : Output the value in AL to port specified by the immediate
             // 2 14
@@ -120,9 +154,16 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             break;
 
         case 0xFA:
-            // CLI : Clear interrupt flags
+            // CLI : Clear interrupt flag
             // 1 2
             $.log('i8086: INST: CLI NOT IMPLEMENTED');
+            this.addCycles(2);
+            break;
+
+        case 0xFB:
+            // STI : Set interrupt flag
+            // 1 2
+            $.log('i8086: INST: STI NOT IMPLEMENTED');
             this.addCycles(2);
             break;
 
@@ -139,14 +180,18 @@ i8086.prototype.decodeAndExecute = function(instructionByte) {
             throw "UnknownInstruction Exception";
     }
 }
-i8086.prototype.interruptRequest = function(interruptData) {
+i8086.prototype.hardwareInterruptRequest = function(interruptData) {
     // data contains vector - top 5 bits are address of table, bottom 3 are interrupt id
     var baseAddress = interruptData & 0xF8,
         interrupt = interruptData & 0x07,
         tableAddress = baseAddress + (interrupt*2),
         IP = this.memory.words[tableAddress],
-        CS = this.memory.bytes[tableAddress + 1];
-    $.log('i8086: INTERRUPT : ID ' + interrupt + ' base vector table address ' + baseAddress + ' - IP ' + IP + ' CS ' + CS);
+        CS = this.memory.bytes[tableAddress + 1],
+        enabled = this.registers.FLAGS & Constants.Flags.IF;
+    $.log('i8086: HW INTERRUPT (enabled - ' + enabled + ') : ID ' + interrupt + ' base vector ' + baseAddress + ' - IP ' + IP + ' CS ' + CS);
+}
+i8086.prototype.softwareInterruptRequest  = function(interrupt) {
+    $.log('i8086: SW INTERRUPT');
 }
 i8086.prototype.addPortDevice = function(port, device) {
     //$.log('i8086: ADD PORT : ' + port + ' ' + device)
