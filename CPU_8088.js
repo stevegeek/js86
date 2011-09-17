@@ -189,6 +189,15 @@ i8086.prototype.hardwareInterruptRequest = function(interruptData) {
         CS = this.memory.bytes[tableAddress + 1],
         enabled = this.registers.FLAGS & Constants.Flags.IF;
     $.log('i8086: HW INTERRUPT (enabled - ' + enabled + ') : ID ' + interrupt + ' base vector ' + baseAddress + ' - IP ' + IP + ' CS ' + CS);
+    
+    // TODO : ************************
+}
+// INT pin high on CPU, acknowledge?
+i8086.prototype.acceptingInterrupts = function() {
+    
+    // TODO : ************************ can interrupt pin be masked?
+        
+    return true;
 }
 i8086.prototype.softwareInterruptRequest  = function(interrupt) {
     $.log('i8086: SW INTERRUPT');

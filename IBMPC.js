@@ -159,9 +159,6 @@ function System() {
     // Create PIC
     this.peripherals.pic = new PIC_8259(this.cpu);
 }
-System.prototype.isHalted = function() {
-    return this.cpu.state === Constants.CPUHalted;
-}
 System.prototype.setRAMContents = function(dataBuffer) {
     this.cpu.memory.writeBytes(new Uint8Array(dataBuffer));
 }
@@ -193,8 +190,7 @@ $(function(message) {
         case 'doSystemCycle':
         default:
             // Do a run loop
-            if (!ibmpc.isHalted())
-                ibmpc.cycle(parseInt(message.data));
+            ibmpc.cycle(parseInt(message.data));
             // Tell the app
             $.send({
                 name: 'ack',

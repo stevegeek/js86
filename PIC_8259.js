@@ -1,6 +1,29 @@
-// 8259 Programmable Interrupt Controller
-// http://en.wikipedia.org/wiki/Intel_8259
-// ************************************************************************
+/*  i8259 Programmable Interrupt Controller
+    ---------------
+    http://en.wikipedia.org/wiki/Intel_8259
+
+    NOTE: this is coded to only support x86 mode (no MCS 80/85 mode)
+
+    Supported: 
+    ---------
+    * Fully Nested Mode
+    * Master Mode
+    * ICW1, ICW2, ICW3, ICW4 (configuration set, IMR set)
+    * OCW1, OCW2, OCW3 (configuration set, IRR/ISR read)
+    * Specific and Non-specific EOIs
+    * Automatic EOI
+    * Special Masked Mode
+
+    Not Supported:
+    -----------
+    * Special Fully Nested Mode
+    * Slave Mode
+    * Automatic Rotation
+    * Specific Rotation
+    * Poll Mode
+
+    Needs more extensive testing!!
+*/
 function PIC_8259(cpu) {
     this.states = {
         Uninitialised: 0,
@@ -23,18 +46,18 @@ function PIC_8259(cpu) {
 }
 PIC_8259.prototype.interruptRequest = function(id) {
     // fire interrupt with id, 8 for the master , or 15 with master/slave
-    //this.registers.IRR[id] = true;
-
     // TODO: Do nothing if not initialised?
     if (this.state != this.states.Ready)
         return;
 
-    // TODO: check priority/mask etc
+    var mask = (1<<id);
 
-    this.cpu.interruptRequest(id);
+    // Set the IRR bit
+    this.registers.IRR |= mask;
+
+    // TODO: Call an update?
 }
 PIC_8259.prototype.portWrite = function(port) {
-    // TODO: Here we could cause an update too, thus servicing an interripts at this point too.
     var byte = this.cpu.portReadByte(port);
     $.log('PIC8259 : PORTS : saw port write ' + port + ' val ' + byte)
     // The low bit of the port number sets the A0 bit of the command words. This is cause in the
@@ -61,7 +84,10 @@ PIC_8259.prototype.portWrite = function(port) {
                         autoEndOfInterruptMode: false,
                         bufferedMode: false,
                         specialFullyNestedMode: false,
-                        singleMode: false // no Slave in XT so this will be 1
+                        singleMode: false, // no Slave in XT so this will be 1
+                        // OCW3
+                        specialMaskedMode: false,
+                        pollMode: false
                     }
                     this.config.requireICW4 = byte & 1 ? true : false;
                     this.config.singleMode = byte & 2 ? true : false;
@@ -84,10 +110,16 @@ PIC_8259.prototype.portWrite = function(port) {
                             case 0: // Rotate in automatic EOI mode (CLEAR)
                                 break;
                             case 1: // Non-specific EOI Command
+                                level = this.getHighestPriorityInterruptInService();
+                                var mask = (1<<level);
+                                // Note if in Special Mask Mode if IMR bit is set for the interrupt the ISR bit is not cleared (p15)
+                                if (level !== false && !(this.config.specialMaskedMode && this.registers.IMR & mask)) {
+                                    this.registers.ISR &= ~mask;
+                                }
                                 break;
-                            case 2: // No operation
-                                break;
+                            case 2: break;// No operation
                             case 3: // Specific EOI Command
+                                this.registers.ISR &= ~(1<<level);
                                 break;
                             case 4: // Rotate in automatic EOI mode (SET)
                                 break;
@@ -113,15 +145,20 @@ PIC_8259.prototype.portWrite = function(port) {
                                 $.log('PIC8259 : OCW3 : read ISR - ' +this.registers.ISR);
                                 break;
                         }
-                        if (byte & 4)
-                            ; // poll command
-                        else
-                            ; // no poll command
-                        if (byte & 64)
-                            if (byte & 32)
-                                ; // Set special mask
-                            else
-                                ; // Reset special mask
+                        // Is Polling mode possible in a PC?
+                        if (byte & 4) {
+                            this.config.pollMode = true; // poll command
+                        } else {
+                            this.config.pollMode = false; // no poll command
+                        }
+                        $.log('PIC8259 : OCW3 : poll mode ' + this.config.pollMode);
+
+                        if (byte & 96) {
+                            this.config.specialMaskedMode = true; // Set special mask
+                        } else if (byte & 64) {
+                            this.config.specialMaskedMode = false; // Reset special mask
+                        }
+                        $.log('PIC8259 : OCW3 : special masked mode ' + this.config.specialMaskedMode);
                     }
                     break;
                 default:
@@ -156,20 +193,103 @@ PIC_8259.prototype.portWrite = function(port) {
             case this.states.Ready:
                 // Accept as an OCW1 - the interrupt mask
                 this.registers.IMR = byte;
-                $.log('PIC8259 : OCW1 : set interrupt mask ' + byte);
+                $.log('PIC8259 : OCW1 : set interrupt mask (IMR) ' + byte);
                 break;
             default:
                 throw 'PIC8259 : Initialization Command Word or Operation Command Words received when not in valid state';
         }
     }
 }
+PIC_8259.prototype.getHighestPriorityInterruptInService = function() {
+    var i = 0,
+        interrupt = false;
+    for (; i < 8; i++) {
+        if (this.registers.ISR & (1<<i)) {
+            interrupt = i;
+            break;
+        }
+    }
+    return interrupt;
+}
+PIC_8259.prototype.getHighestPriorityInterrupt = function() {
+    var mask = false,
+        interrupt = false,
+        i = 0;
+    if (!this.config.specialFullyNestedMode) {
+        // Fully Nested Mode (default mode) : int 0 highest priority -> int 7 lowest
+        if (!this.config.specialMaskedMode) {
+            var higherinservice = false;
+            for (; i < 8; i++) {
+                higherinservice = mask ? (this.registers.ISR & mask) : false;
+                mask = (1<<i);
+                if (!higherinservice) {
+                    if (this.registers.IRR & mask) {
+                        interrupt = i;
+                        break;
+                    }
+                } else {
+                    $.log('PIC8259 : Higher Interrupt already in service!')
+                    break;
+                }
+            }
+        } else {
+            // Special Masked Mode
+            // Allow all interrupts not masked, by-passes the normal requirement that
+            // lower priority interrupts are inhibited while servicing a routine.
+            for (; i < 8; i++) {
+                if (this.registers.IRR & mask) {
+                    interrupt = i;
+                    break;
+                }
+            }
+        }
+    } else {
+        throw 'PIC8259 : Special Fully Nested Mode is not supported!';
+    }
+    return interrupt;
+}
+
+
+
+test = 0;
 PIC_8259.prototype.update = function() {
     // Get some processing time
     $.log('PIC8259 : UPDATE : tick');
+    //  *************** TEST :::: Interrupt needs servicing
+    if (test == 0) {
+        this.interruptRequest(5);
+    } else if (test == 1) {
+        this.interruptRequest(0);
+    }
+    test++;
+    // ************************
 
-    // STUFF
+    // If new interrupts exist
+    if (this.registers.IRR != 0) {
+        // Send INT to CPU (see INTERRUPT SEQUENCE in 8259A docs)
+        // Fire highest priority int
+        var interrupt = this.getHighestPriorityInterrupt(),
+            highestprioritymask = (1<<interrupt);
+        if (highestprioritymask !== false && (this.registers.IMR & highestprioritymask)) {    
+            // Check INTA (ie set INT bit high and check response from CPU)
+            if (this.cpu.acceptingInterrupts()) {
+                this.registers.ISR |= highestprioritymask;  // Set ISR
+                this.registers.IRR &= ~highestprioritymask; // Clear IRR
 
-    // TEST :::: Interrupt needs servicing
-    var data = 0;
-    this.cpu.hardwareInterruptRequest(data);
+                $.log('PIC8259 : interrupt ' + interrupt + ' is enabled (as per IMR).')
+
+                // Now send the interrupt ID (vector) to the CPU
+                this.cpu.hardwareInterruptRequest(this.config.addressVector + interrupt);
+
+                // In AEOI mode we reset ISR bit here else it is reset by an EOI command at the end of the int service routine
+                if (this.config.autoEndOfInterruptMode) {
+                    this.registers.ISR ^= highestprioritymask; // Reset bit
+                }
+            } else {
+                $.log('PIC8259 : interrupt ' + interrupt + ' is not masked but CPU did not acknowledge int.');
+            }
+        } else {
+            $.log('PIC8259 : interrupt ' + interrupt + ' is masked or higher interrupt already in service.');
+        }
+    }
 }
