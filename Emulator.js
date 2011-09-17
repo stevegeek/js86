@@ -106,7 +106,31 @@ $(function() {
     // hopefully replace to (and the screen will become a canvas element).
     terminal.init();
 
-    var pcWorker;
+    var pcWorker,
+        loaded = false,
+        heartbeat,
+        linenumber = 0;
+        
+    // Hook up stop button
+    $('#powerswitch').click(function() {
+        if (loaded && !heartbeat) {
+            $('#powerswitch').html('Off');
+            $('#powerlight').addClass('on');
+            heartbeat = setInterval(function() {
+                pcWorker.send({
+                    name: 'doSystemCycle',
+                    data: 500
+                });
+            }, 1000);
+        } else if (loaded && heartbeat) {
+            $('#powerswitch').html('On');
+            $('#powerlight').removeClass('on');
+            clearInterval(heartbeat);
+            heartbeat = null;
+        } else {
+            alert('System is not ready to start yet. Please wait.');
+        }
+    });
     // Create Main worker
     $.Hive.create({
         worker: 'IBMPC.js',
@@ -115,20 +139,18 @@ $(function() {
                 case 'ack':
                     switch (data.request.name) {
                         case 'loadBinaryAndSetAsRAM':
-                            console.log('rom loaded')
-                            pcWorker.send({
-                                name: 'doSystemCycle',
-                                data: 500
-                            });
+                            console.log('EMULATOR : System binary loaded and RAM set. Start System heartbeat...');
+                            loaded = true;
                             break;
                         case 'doSystemCycle':
-                            console.log('a cycle completed');
+                            console.log('EMULATOR : a system cycle completed');
                             break;
                     }
                     break;
                 default:
-                    console.log(data.message)
+                    console.log(linenumber + ' : ' + data.message)
                     terminal.log(data.message)
+                    linenumber++;
             }
         },
         created: function($hive) {
