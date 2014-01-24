@@ -34,7 +34,7 @@ importScripts('libs/jquery-hive/jquery.hive.pollen.js', 'CPU_8088.js', 'PIC_8259
 // Create a log function on pollen
 $.log = function(msg) {
     this.send(msg + '\n');
-}
+};
 
 // IBMPC System constants
 var Constants = {
@@ -63,7 +63,7 @@ var Constants = {
         CS: 8,
         DS: 9,
         SS: 10,
-        ES: 11,
+        ES: 11
     },
     Flags: { // 16 bit register
         CF: 1, // Carry
@@ -90,7 +90,7 @@ var Constants = {
     // 8259 PIC
     Master8259CommandPort:  0x0020,
     Master8259DataPort:     0x0021
-}
+};
 
 // Utilities
 // ************************************************************************
@@ -122,7 +122,6 @@ function LoadBinaryFile(fileName, callBack) {
     };
 
     xhr.send(null);
-    return
 }
 
 // ************************************************************************
@@ -132,8 +131,9 @@ function RAM(initialValues) {
     this.buffer = new ArrayBuffer(this.size);
     this.bytes = new Uint8Array(this.buffer);
     this.words = new Uint16Array(this.buffer);
-    if (initialValues)
-        this.writeBytesWithRange(initialValues, MakeRange(0, initialValues.length))
+    if (initialValues) {
+        this.writeBytesWithRange(initialValues, MakeRange(0, initialValues.length));
+    }
 }
 RAM.prototype.writeBytesWithRange = function (data, range) {
     var i = 0;
@@ -159,17 +159,19 @@ function System() {
     // Create PIC
     this.peripherals.pic = new PIC_8259(this.cpu);
 }
+
 System.prototype.setRAMContents = function(dataBuffer) {
     this.cpu.memory.writeBytes(new Uint8Array(dataBuffer));
-}
+};
+
 System.prototype.cycle = function(cycles) {
     this.cpu.run(typeof cycles !== 'undefined' ? cycles : 500);
     var devices = this.peripherals;
     $.each(devices, function(id) {
-        $.log('SYS : Device update for ' + id + ':')
+        $.log('SYS : Device update for ' + id + ':');
         devices[id].update();
     });
-}
+};
 
 // ************************************************************************
 var ibmpc = new System();

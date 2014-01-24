@@ -18,11 +18,15 @@
 
 
 [ORG 0x0]
-    db 255
+    db 0
+    db 1
     db 0
     db 0
     db 0
-    times 252 db 0
+    db 1
+    db 0
+    db 0
+    times 1016 db 0
 
 start:
     mov al,0x1
@@ -45,16 +49,17 @@ start:
     ; read ISR
     mov al,0x0B
     out 0x20,al
-    in al,0x20
-
+    ;in al,0x20
+    sti
+    int 0x1
     ; more stuff
     add al,0x1
     add al,0x1
     add al,0x1
 
     hlt
-    
-    
+
+
     ; create file size of RAM
     times 1048560-($-$$) db 0
 
